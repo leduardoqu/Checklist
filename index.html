@@ -3,81 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Logística (Versão Blindada)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <title>DIAGNÓSTICO LOGÍSTICA</title>
     
-    <!-- FIREBASE (Versão Compatibilidade - A que funcionou) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
+    <!-- Estilo Simples para não depender de download -->
     <style>
-        body { -webkit-tap-highlight-color: transparent; }
+        body { font-family: sans-serif; background: #eee; padding: 20px; }
+        .box { background: white; padding: 20px; border-radius: 10px; max-width: 400px; margin: 0 auto; border-top: 5px solid red; }
+        input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; }
+        button { width: 100%; padding: 15px; background: red; color: white; font-weight: bold; border: none; cursor: pointer; }
+        #debug-console { 
+            background: black; color: lime; font-family: monospace; 
+            padding: 10px; margin-top: 20px; min-height: 150px; 
+            white-space: pre-wrap; font-size: 12px;
+        }
     </style>
+
+    <!-- SISTEMA DE LOG VISUAL (Carrega antes de tudo) -->
+    <script>
+        function log(msg) {
+            const el = document.getElementById('debug-console');
+            if(el) el.innerHTML += "> " + msg + "\n";
+            console.log(msg);
+        }
+        window.onerror = function(msg, url, line) {
+            log("ERRO GLOBAL: " + msg + " (Linha: " + line + ")");
+            return false;
+        };
+    </script>
+
+    <!-- FIREBASE (CDN PADRÃO) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" onload="log('Lib App carregada')" onerror="log('ERRO: Falha ao baixar Firebase App')"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js" onload="log('Lib Auth carregada')" onerror="log('ERRO: Falha ao baixar Firebase Auth')"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js" onload="log('Lib Firestore carregada')" onerror="log('ERRO: Falha ao baixar Firebase Firestore')"></script>
+
 </head>
-<body class="bg-slate-100 font-sans text-slate-800 min-h-screen">
+<body>
 
-    <!-- TELA DE LOGIN (SEM FORMULÁRIO PARA NÃO RECARREGAR) -->
-    <div id="loginScreen" class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-            <h1 class="text-2xl font-bold text-center mb-6 text-blue-900">Acesso Logística</h1>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">E-mail</label>
-                    <input type="text" id="email" class="w-full p-3 border rounded-md outline-none focus:border-blue-500" placeholder="email@exemplo.com">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Senha</label>
-                    <input type="password" id="password" class="w-full p-3 border rounded-md outline-none focus:border-blue-500" placeholder="">
-                </div>
-                
-                <button onclick="tentarLogin()" id="btnLogin" class="w-full py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold transition-colors">
-                    ENTRAR
-                </button>
-            </div>
-            <p id="errorMsg" class="mt-4 text-center text-red-600 font-bold hidden"></p>
-        </div>
+    <div class="box">
+        <h2 style="text-align: center;">Teste de Conexão</h2>
+        
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Senha">
+        
+        <button id="btnEntrar" onclick="cliqueBotao()">ENTRAR</button>
     </div>
 
-    <!-- TELA DO APP -->
-    <div id="appScreen" class="hidden">
-        <header class="bg-blue-900 text-white p-6 sticky top-0 z-10 flex justify-between shadow-lg">
-            <div class="flex items-center gap-2">
-                <i data-lucide="truck"></i>
-                <div>
-                    <h1 class="font-bold text-xl leading-none">Logística</h1>
-                    <p id="userEmailDisplay" class="text-xs text-blue-300 font-normal mt-1">...</p>
-                </div>
-            </div>
-            <button onclick="sair()" class="text-xs underline hover:text-blue-200">Sair</button>
-        </header>
-
-        <main class="max-w-2xl mx-auto p-4">
-            <div class="bg-white p-3 rounded-lg shadow mb-4 flex justify-between items-center border border-slate-200">
-                <button onclick="mudarData(-1)" class="p-2 hover:bg-slate-100 rounded-full"><i data-lucide="chevron-left" class="text-slate-500"></i></button>
-                <div class="flex items-center gap-2">
-                    <i data-lucide="calendar" class="w-5 h-5 text-blue-600"></i>
-                    <input type="date" id="dateInput" class="font-bold text-lg text-center outline-none bg-transparent text-slate-700">
-                </div>
-                <button onclick="mudarData(1)" class="p-2 hover:bg-slate-100 rounded-full"><i data-lucide="chevron-right" class="text-slate-500"></i></button>
-            </div>
-
-            <div id="lista" class="bg-white rounded-lg shadow overflow-hidden divide-y divide-slate-100 border border-slate-200">
-                <!-- Itens aqui -->
-            </div>
-            
-            <button onclick="copiarResumo()" class="mt-6 w-full py-4 bg-white border border-blue-200 text-blue-600 rounded-lg font-bold flex items-center justify-center gap-2 shadow-sm hover:bg-blue-50 transition-colors">
-                <i data-lucide="copy"></i> Copiar Resumo
-            </button>
-        </main>
-    </div>
+    <!-- CAIXA PRETA DA VERDADE -->
+    <div id="debug-console">INICIANDO DIAGNÓSTICO...
+</div>
 
     <script>
-        // ======================================================
-        //   CONFIGURAÇÃO ORIGINAL QUE FUNCIONOU
-        // ======================================================
+        // CONFIGURAÇÃO (SUA CONFIG ORIGINAL)
         const firebaseConfig = {
             apiKey: "AIzaSyCgWfdAVTVFhKRS-BLWGJrIt68hdq-OMhg",
             authDomain: "logisticacloud-1cc32.firebaseapp.com",
@@ -87,198 +63,80 @@
             appId: "1:883823898286:web:6c22160dad0cd403a0873f"
         };
 
-        // Inicialização Segura
         let auth, db;
-        
-        try {
-            firebase.initializeApp(firebaseConfig);
-            auth = firebase.auth();
-            db = firebase.firestore();
-        } catch (e) {
-            console.error(e);
-            alert("Erro ao conectar no Google. Verifique a internet.");
-        }
 
-        // Variáveis
-        const ITENS = [
-            "Acompanhamento de cargas", "Acompanhamento de montadores", 
-            "Acompanhamento dos transportes - 1x1", "Análise da quilometragem planejada",
-            "Carregamentos Monitorados", "Imagens frota", 
-            "KPI distribuição e logística", "Monitoramento de aderências"
-        ];
-        let dataAtual = new Date().toISOString().split('T')[0];
-        let usuarioAtual = null;
-
-        // Monitorar Login
-        if (auth) {
-            auth.onAuthStateChanged((user) => {
-                if (user) {
-                    usuarioAtual = user;
-                    document.getElementById('userEmailDisplay').innerText = user.email;
-                    document.getElementById('loginScreen').classList.add('hidden');
-                    document.getElementById('appScreen').classList.remove('hidden');
-                    if(window.lucide) lucide.createIcons();
-                    iniciarApp();
-                } else {
-                    document.getElementById('loginScreen').classList.remove('hidden');
-                    document.getElementById('appScreen').classList.add('hidden');
-                }
-            });
-        }
-
-        // Função de Login
-        function tentarLogin() {
-            const email = document.getElementById('email').value;
-            const pass = document.getElementById('password').value;
-            const btn = document.getElementById('btnLogin');
-            const err = document.getElementById('errorMsg');
-
-            if (!email || !pass) {
-                err.innerText = "Preencha e-mail e senha.";
-                err.classList.remove('hidden');
+        // TENTA INICIAR AUTOMATICAMENTE
+        window.onload = function() {
+            log("Janela carregada completely.");
+            
+            // 1. Verifica se o Firebase existe
+            if (typeof firebase === 'undefined') {
+                log("ERRO FATAL: A variável 'firebase' não existe.");
+                log("CAUSA: O download dos scripts foi bloqueado pela sua rede.");
+                document.getElementById('btnEntrar').style.background = 'gray';
+                document.getElementById('btnEntrar').innerText = "BLOQUEADO";
                 return;
             }
 
-            err.innerText = "";
-            err.classList.add('hidden');
-            btn.innerText = "Verificando...";
-            btn.disabled = true;
-            btn.classList.add('opacity-70');
+            // 2. Tenta conectar
+            try {
+                log("Tentando inicializar Firebase...");
+                firebase.initializeApp(firebaseConfig);
+                auth = firebase.auth();
+                db = firebase.firestore();
+                log("SUCESSO: Firebase conectado e pronto.");
+            } catch (e) {
+                log("ERRO CONFIG: " + e.message);
+            }
+        };
 
-            // Tenta logar
+        // FUNÇÃO DO CLIQUE
+        function cliqueBotao() {
+            log("----------------");
+            log("BOTÃO CLICADO.");
+            
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+
+            if (!auth) {
+                log("ERRO: O sistema de autenticação não está pronto.");
+                return;
+            }
+
+            log("Enviando dados para o Google...");
+            
             auth.signInWithEmailAndPassword(email, pass)
+                .then((userCred) => {
+                    log("LOGIN SUCESSO! Usuário: " + userCred.user.email);
+                    alert("LOGIN FUNCIONOU! O problema está resolvido.");
+                })
                 .catch((error) => {
-                    // Se falhar, tenta criar conta
-                    if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-                        return auth.createUserWithEmailAndPassword(email, pass);
+                    log("FALHA NO LOGIN:");
+                    log("Código: " + error.code);
+                    log("Mensagem: " + error.message);
+                    
+                    if (error.code === 'auth/network-request-failed') {
+                        alert("ERRO DE REDE: O firewall da empresa bloqueou a conexão.");
+                    } else if (error.code === 'auth/operation-not-allowed') {
+                        log("DICA: Ative o Login por Email/Senha no painel do Firebase.");
+                    } else if (error.code === 'auth/invalid-credential') {
+                        log("Tentando criar conta...");
+                        criarConta(email, pass);
                     }
-                    throw error;
-                })
+                });
+        }
+
+        function criarConta(email, pass) {
+            auth.createUserWithEmailAndPassword(email, pass)
                 .then(() => {
-                    // Sucesso (login ou criação)
-                    btn.innerText = "ENTRAR";
+                    log("CONTA CRIADA COM SUCESSO!");
+                    alert("Conta criada e logada!");
                 })
-                .catch((error) => {
-                    btn.innerText = "ENTRAR";
-                    btn.disabled = false;
-                    btn.classList.remove('opacity-70');
-                    
-                    let msg = error.message;
-                    if (error.code === 'auth/weak-password') msg = "A senha precisa ter 6 caracteres ou mais.";
-                    if (error.code === 'auth/invalid-email') msg = "E-mail inválido.";
-                    if (error.code === 'auth/network-request-failed') msg = "Erro de conexão. Verifique a internet.";
-                    
-                    err.innerText = msg;
-                    err.classList.remove('hidden');
+                .catch((e) => {
+                    log("Erro ao criar conta: " + e.code);
                 });
         }
 
-        // Permitir usar a tecla ENTER para logar
-        document.getElementById('password').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                tentarLogin();
-            }
-        });
-
-        function sair() {
-            auth.signOut();
-            window.location.reload();
-        }
-
-        // Funções do App
-        function iniciarApp() {
-            const dateInput = document.getElementById('dateInput');
-            dateInput.value = dataAtual;
-            
-            // Remove listeners antigos para evitar duplicação
-            const newDateInput = dateInput.cloneNode(true);
-            dateInput.parentNode.replaceChild(newDateInput, dateInput);
-            
-            newDateInput.addEventListener('change', (e) => {
-                dataAtual = e.target.value;
-                carregarDados();
-            });
-            carregarDados();
-        }
-
-        function mudarData(dias) {
-            const d = new Date(dataAtual);
-            d.setDate(d.getDate() + dias);
-            dataAtual = d.toISOString().split('T')[0];
-            document.getElementById('dateInput').value = dataAtual;
-            carregarDados();
-        }
-
-        function carregarDados() {
-            if (!usuarioAtual) return;
-            
-            db.collection("users").doc(usuarioAtual.uid).collection("logistica").doc(dataAtual)
-                .onSnapshot((doc) => {
-                    const dados = doc.exists ? doc.data() : {};
-                    renderizar(dados);
-                });
-        }
-
-        function toggle(item, valorAtual) {
-            // Vibração ao clicar (apenas Android)
-            if (navigator.vibrate) navigator.vibrate(10);
-            
-            const ref = db.collection("users").doc(usuarioAtual.uid).collection("logistica").doc(dataAtual);
-            ref.set({ [item]: !valorAtual }, { merge: true });
-        }
-
-        function renderizar(dados) {
-            const div = document.getElementById('lista');
-            div.innerHTML = '';
-            
-            ITENS.forEach(item => {
-                const feito = !!dados[item];
-                div.innerHTML += `
-                    <div onclick="toggle('${item}', ${feito})" class="p-4 flex items-center gap-3 cursor-pointer transition-colors ${feito ? 'bg-blue-50' : 'hover:bg-slate-50'} border-b border-slate-100">
-                        <div class="transition-transform ${feito ? 'text-green-600 scale-110' : 'text-slate-300'}">
-                            ${feito ? '<i data-lucide="check-circle-2" class="fill-green-100"></i>' : '<i data-lucide="circle"></i>'}
-                        </div>
-                        <span class="${feito ? 'line-through text-slate-400' : 'text-slate-700 font-medium'} select-none">${item}</span>
-                    </div>
-                `;
-            });
-            if(window.lucide) lucide.createIcons();
-        }
-
-        function copiarResumo() {
-            const itensDOM = document.querySelectorAll('#lista > div');
-            // Formatar data para PT-BR
-            const dataFormatada = dataAtual.split('-').reverse().join('/');
-            
-            let texto = 📋 *Logística - ${dataFormatada}*\n\n;
-            let feitos = [];
-            let pendentes = [];
-
-            ITENS.forEach(item => {
-                const domItem = Array.from(itensDOM).find(el => el.innerText.includes(item));
-                // Verifica visualmente se está marcado
-                if (domItem && domItem.innerHTML.includes('text-green-600')) {
-                    feitos.push(item);
-                } else {
-                    pendentes.push(item);
-                }
-            });
-
-            feitos.forEach(i => texto += ✅ ${i}\n);
-            if (pendentes.length > 0) {
-                texto += \n⏳ *Pendentes:*\n;
-                pendentes.forEach(i => texto += ⬜ ${i}\n);
-            }
-
-            const area = document.createElement("textarea");
-            area.value = texto;
-            document.body.appendChild(area);
-            area.select();
-            document.execCommand("copy");
-            document.body.removeChild(area);
-            
-            alert("Resumo copiado!");
-        }
     </script>
 </body>
 </html>
