@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#991b1b">
     <title>Rotina Logística</title>
     
-    <!-- Ícones e Estilo -->
+    <!-- Visual (Tailwind + Ícones) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     
@@ -18,45 +18,48 @@
     <style>
         body { -webkit-tap-highlight-color: transparent; user-select: none; }
         .hidden { display: none !important; }
-        input:focus { ring: 2px solid #991b1b; }
+        input:focus { ring: 2px solid #991b1b; outline: none; border-color: #991b1b; }
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #991b1b; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 min-h-screen">
 
-    <!-- TELA DE LOGIN -->
-    <div id="loginScreen" class="flex items-center justify-center min-h-screen p-4 bg-slate-100 flex-col">
+    <!-- ECRÃ DE LOGIN -->
+    <div id="loginScreen" class="flex items-center justify-center min-h-screen p-4 flex-col">
         <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md border-t-4 border-red-800">
             <div class="text-center mb-6">
-                <!-- Foto de Perfil -->
-                <div class="w-24 h-24 mx-auto mb-4 rounded-full border-4 border-red-100 overflow-hidden shadow-sm relative bg-red-50">
+                <!-- Foto de Perfil / Logo -->
+                <div class="w-24 h-24 mx-auto mb-4 rounded-full border-4 border-red-100 overflow-hidden shadow-sm relative bg-white flex items-center justify-center">
                     <img src="./perfil.jpg" class="w-full h-full object-cover" onerror="this.style.display='none'; document.getElementById('fallbackIcon').classList.remove('hidden')">
-                    <div id="fallbackIcon" class="hidden w-full h-full flex items-center justify-center bg-red-50">
-                        <i data-lucide="user" class="w-10 h-10 text-red-300"></i>
+                    <div id="fallbackIcon" class="hidden">
+                        <i data-lucide="truck" class="w-10 h-10 text-red-300"></i>
                     </div>
                 </div>
                 <h1 class="text-2xl font-bold text-slate-800">Logística</h1>
                 <p class="text-slate-500 text-sm">Controlo de Operações</p>
             </div>
             
-            <!-- FORMULÁRIO SIMPLIFICADO -->
             <div class="space-y-4">
                 <div>
-                    <input type="email" id="email" class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600" placeholder="E-mail">
+                    <input type="email" id="email" class="w-full p-3 border border-slate-300 rounded-lg" placeholder="E-mail">
                 </div>
                 <div>
-                    <input type="password" id="password" class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600" placeholder="Palavra-passe">
+                    <input type="password" id="password" class="w-full p-3 border border-slate-300 rounded-lg" placeholder="Palavra-passe">
                 </div>
                 
-                <button onclick="fazerLogin()" id="btnLogin" class="w-full py-3 bg-red-700 text-white rounded-lg hover:bg-red-800 font-bold shadow-md active:scale-95 transition-all">
+                <button onclick="cliqueEntrar()" id="btnLogin" class="w-full py-3 bg-red-700 text-white rounded-lg hover:bg-red-800 font-bold shadow-md active:scale-95 transition-all flex justify-center items-center gap-2">
                     ENTRAR
                 </button>
             </div>
             
-            <p id="statusMsg" class="mt-4 text-center text-slate-500 text-xs font-mono">A carregar sistema...</p>
+            <div class="mt-4 text-center">
+                <p id="statusMsg" class="text-xs font-mono text-slate-400">A carregar sistema...</p>
+            </div>
         </div>
     </div>
 
-    <!-- TELA DA APLICAÇÃO -->
+    <!-- ECRÃ DA APLICAÇÃO -->
     <div id="appScreen" class="hidden pb-20">
         <header class="bg-red-900 text-white p-6 sticky top-0 z-20 shadow-lg">
             <div class="flex justify-between items-center max-w-2xl mx-auto">
@@ -94,7 +97,7 @@
     </div>
 
     <script>
-        // --- 1. CONFIGURAÇÃO (A mesma do teste) ---
+        // --- 1. CONFIGURAÇÃO (A MESMA DO DIAGNÓSTICO) ---
         const firebaseConfig = {
             apiKey: "AIzaSyCgWfdAVTVFhKRS-BLWGJrIt68hdq-OMhg",
             authDomain: "logisticacloud-1cc32.firebaseapp.com",
@@ -107,47 +110,43 @@
         let auth, db;
         let dataAtual = new Date().toISOString().split('T')[0];
         let usuarioAtual = null;
-        
-        const ITENS = [
-            "Acompanhamento de cargas", "Acompanhamento de montadores", 
-            "Acompanhamento dos transportes - 1x1", "Análise da quilometragem planejada",
-            "Carregamentos Monitorados", "Imagens frota", 
-            "KPI distribuição e logística", "Monitoramento de aderências"
-        ];
 
-        // --- 2. INICIALIZAÇÃO ---
-        window.onload = function() {
-            try {
-                if (typeof firebase === 'undefined') throw new Error("Firebase bloqueado");
-                
+        // --- 2. INICIALIZAÇÃO IMEDIATA ---
+        // Assim que o script lê isso, ele executa. Não espera 'window.onload' que pode travar.
+        try {
+            if (typeof firebase === 'undefined') {
+                document.getElementById('statusMsg').innerText = "ERRO: Firebase não carregou.";
+                document.getElementById('statusMsg').style.color = "red";
+            } else {
                 firebase.initializeApp(firebaseConfig);
                 auth = firebase.auth();
                 db = firebase.firestore();
-
-                document.getElementById('statusMsg').innerText = "Sistema Pronto.";
-                document.getElementById('statusMsg').style.color = "green";
-
-                // Verifica se já está logado
+                
+                // Atualiza a mensagem visualmente
+                const status = document.getElementById('statusMsg');
+                status.innerText = "Sistema Pronto. Pode entrar.";
+                status.style.color = "green";
+                
+                // Verifica login silencioso
                 auth.onAuthStateChanged((user) => {
                     if (user) {
                         usuarioAtual = user;
-                        entrarNoApp();
+                        status.innerText = "A entrar automaticamente...";
+                        setTimeout(() => entrarNoApp(), 500); // Pequeno delay para transição suave
                     }
                 });
-
-                // Ativar tecla Enter
-                document.getElementById('password').addEventListener('keyup', function(e) {
-                    if (e.key === 'Enter') fazerLogin();
-                });
-
-            } catch (e) {
-                document.getElementById('statusMsg').innerText = "Erro ao carregar: " + e.message;
-                document.getElementById('statusMsg').style.color = "red";
             }
-        };
+        } catch (e) {
+            console.error(e);
+            document.getElementById('statusMsg').innerText = "Erro: " + e.message;
+        }
 
-        // --- 3. LOGIN (Lógica do Diagnóstico) ---
-        function fazerLogin() {
+        // Tentar carregar ícones (se falhar, não trava o resto)
+        if (window.lucide) lucide.createIcons();
+
+
+        // --- 3. FUNÇÃO DE LOGIN (Lógica do Diagnóstico) ---
+        function cliqueEntrar() {
             const email = document.getElementById('email').value;
             const pass = document.getElementById('password').value;
             const btn = document.getElementById('btnLogin');
@@ -159,33 +158,40 @@
                 return;
             }
 
-            btn.innerText = "A entrar...";
+            // Efeito visual de carregamento
+            btn.innerHTML = '<div class="loader"></div> A verificar...';
             btn.disabled = true;
-            btn.style.opacity = "0.7";
-            status.innerText = "A conectar ao Google...";
+            status.innerText = "A contactar servidor...";
             status.style.color = "blue";
 
+            if (!auth) {
+                status.innerText = "Erro: Auth não inicializado.";
+                btn.innerHTML = "ENTRAR";
+                btn.disabled = false;
+                return;
+            }
+
             auth.signInWithEmailAndPassword(email, pass)
-                .then(() => {
-                    status.innerText = "Sucesso! A redirecionar...";
+                .then((cred) => {
+                    status.innerText = "Sucesso! Olá " + cred.user.email;
                     status.style.color = "green";
-                    // onAuthStateChanged fará a mudança de tela
+                    // onAuthStateChanged vai tratar da mudança de tela
                 })
                 .catch((error) => {
                     // Tenta criar conta se não existir
                     if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-                         status.innerText = "Criando conta nova...";
+                         status.innerText = "Conta nova. A criar registo...";
                          return auth.createUserWithEmailAndPassword(email, pass);
                     }
                     throw error;
                 })
                 .catch((error) => {
-                    btn.innerText = "ENTRAR";
+                    // Erro real
+                    btn.innerHTML = "ENTRAR";
                     btn.disabled = false;
-                    btn.style.opacity = "1";
                     
                     let msg = error.code;
-                    if(error.code === 'auth/network-request-failed') msg = "Erro de conexão.";
+                    if(error.code === 'auth/network-request-failed') msg = "Sem internet.";
                     if(error.code === 'auth/wrong-password') msg = "Palavra-passe incorreta.";
                     if(error.code === 'auth/invalid-email') msg = "E-mail inválido.";
                     
@@ -199,7 +205,6 @@
             document.getElementById('userEmailDisplay').innerText = usuarioAtual.email;
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('appScreen').classList.remove('hidden');
-            if(window.lucide) lucide.createIcons();
             iniciarLista();
         }
 
@@ -208,11 +213,18 @@
             window.location.reload();
         }
 
+        const ITENS = [
+            "Acompanhamento de cargas", "Acompanhamento de montadores", 
+            "Acompanhamento dos transportes - 1x1", "Análise da quilometragem planejada",
+            "Carregamentos Monitorados", "Imagens frota", 
+            "KPI distribuição e logística", "Monitoramento de aderências"
+        ];
+
         function iniciarLista() {
             const dateInput = document.getElementById('dateInput');
             dateInput.value = dataAtual;
             
-            // Corrige bug de eventos duplicados
+            // Clonar para limpar eventos antigos
             const novoInput = dateInput.cloneNode(true);
             dateInput.parentNode.replaceChild(novoInput, dateInput);
             
@@ -269,7 +281,8 @@
             const dataF = dataAtual.split('-').reverse().join('/');
             
             let texto = 📋 *Logística - ${dataF}*\n\n;
-            let feitos = [], pendentes = [];
+            let feitos = [];
+            let pendentes = [];
 
             ITENS.forEach(item => {
                 const domItem = Array.from(itensDOM).find(el => el.innerText.includes(item));
@@ -289,8 +302,17 @@
             area.select();
             document.execCommand("copy");
             document.body.removeChild(area);
+            
             alert("Resumo copiado!");
         }
+
+        // Tecla Enter
+        document.getElementById('password').addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') cliqueEntrar();
+        });
+        document.getElementById('email').addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') document.getElementById('password').focus();
+        });
     </script>
 </body>
 </html>
