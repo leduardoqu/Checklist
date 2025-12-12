@@ -1,59 +1,100 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-PT">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DIAGNÓSTICO LOGÍSTICA</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#991b1b">
+    <title>Rotina Logística</title>
     
-    <!-- Estilo Simples para não depender de download -->
+    <!-- Ícones e Estilo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- FIREBASE (O mesmo que funcionou no diagnóstico) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
     <style>
-        body { font-family: sans-serif; background: #eee; padding: 20px; }
-        .box { background: white; padding: 20px; border-radius: 10px; max-width: 400px; margin: 0 auto; border-top: 5px solid red; }
-        input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; }
-        button { width: 100%; padding: 15px; background: red; color: white; font-weight: bold; border: none; cursor: pointer; }
-        #debug-console { 
-            background: black; color: lime; font-family: monospace; 
-            padding: 10px; margin-top: 20px; min-height: 150px; 
-            white-space: pre-wrap; font-size: 12px;
-        }
+        body { -webkit-tap-highlight-color: transparent; user-select: none; }
+        .hidden { display: none !important; }
+        input:focus { ring: 2px solid #991b1b; }
     </style>
-
-    <!-- SISTEMA DE LOG VISUAL (Carrega antes de tudo) -->
-    <script>
-        function log(msg) {
-            const el = document.getElementById('debug-console');
-            if(el) el.innerHTML += "> " + msg + "\n";
-            console.log(msg);
-        }
-        window.onerror = function(msg, url, line) {
-            log("ERRO GLOBAL: " + msg + " (Linha: " + line + ")");
-            return false;
-        };
-    </script>
-
-    <!-- FIREBASE (CDN PADRÃO) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" onload="log('Lib App carregada')" onerror="log('ERRO: Falha ao baixar Firebase App')"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js" onload="log('Lib Auth carregada')" onerror="log('ERRO: Falha ao baixar Firebase Auth')"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js" onload="log('Lib Firestore carregada')" onerror="log('ERRO: Falha ao baixar Firebase Firestore')"></script>
-
 </head>
-<body>
+<body class="bg-slate-100 font-sans text-slate-800 min-h-screen">
 
-    <div class="box">
-        <h2 style="text-align: center;">Teste de Conexão</h2>
-        
-        <input type="email" id="email" placeholder="Email">
-        <input type="password" id="password" placeholder="Senha">
-        
-        <button id="btnEntrar" onclick="cliqueBotao()">ENTRAR</button>
+    <!-- TELA DE LOGIN -->
+    <div id="loginScreen" class="flex items-center justify-center min-h-screen p-4 bg-slate-100 flex-col">
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md border-t-4 border-red-800">
+            <div class="text-center mb-6">
+                <!-- Foto de Perfil -->
+                <div class="w-24 h-24 mx-auto mb-4 rounded-full border-4 border-red-100 overflow-hidden shadow-sm relative bg-red-50">
+                    <img src="./perfil.jpg" class="w-full h-full object-cover" onerror="this.style.display='none'; document.getElementById('fallbackIcon').classList.remove('hidden')">
+                    <div id="fallbackIcon" class="hidden w-full h-full flex items-center justify-center bg-red-50">
+                        <i data-lucide="user" class="w-10 h-10 text-red-300"></i>
+                    </div>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-800">Logística</h1>
+                <p class="text-slate-500 text-sm">Controlo de Operações</p>
+            </div>
+            
+            <!-- FORMULÁRIO SIMPLIFICADO -->
+            <div class="space-y-4">
+                <div>
+                    <input type="email" id="email" class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600" placeholder="E-mail">
+                </div>
+                <div>
+                    <input type="password" id="password" class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600" placeholder="Palavra-passe">
+                </div>
+                
+                <button onclick="fazerLogin()" id="btnLogin" class="w-full py-3 bg-red-700 text-white rounded-lg hover:bg-red-800 font-bold shadow-md active:scale-95 transition-all">
+                    ENTRAR
+                </button>
+            </div>
+            
+            <p id="statusMsg" class="mt-4 text-center text-slate-500 text-xs font-mono">A carregar sistema...</p>
+        </div>
     </div>
 
-    <!-- CAIXA PRETA DA VERDADE -->
-    <div id="debug-console">INICIANDO DIAGNÓSTICO...
-</div>
+    <!-- TELA DA APLICAÇÃO -->
+    <div id="appScreen" class="hidden pb-20">
+        <header class="bg-red-900 text-white p-6 sticky top-0 z-20 shadow-lg">
+            <div class="flex justify-between items-center max-w-2xl mx-auto">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full border-2 border-red-400 overflow-hidden bg-red-800">
+                        <img src="./perfil.jpg" class="w-full h-full object-cover" onerror="this.style.display='none'">
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-xl leading-none">Logística</h1>
+                        <p id="userEmailDisplay" class="text-xs text-red-200 opacity-90 mt-1">...</p>
+                    </div>
+                </div>
+                <button onclick="sair()" class="bg-red-800 p-2 rounded-lg hover:bg-red-700 transition-colors border border-red-700">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="max-w-2xl mx-auto p-4">
+            <div class="bg-white p-2 rounded-xl shadow-sm mb-4 flex justify-between items-center border border-slate-100">
+                <button onclick="mudarData(-1)" class="p-3 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg"><i data-lucide="chevron-left"></i></button>
+                <div class="flex items-center gap-2">
+                    <i data-lucide="calendar" class="w-5 h-5 text-red-700"></i>
+                    <input type="date" id="dateInput" class="font-bold text-lg text-slate-700 text-center outline-none bg-transparent uppercase">
+                </div>
+                <button onclick="mudarData(1)" class="p-3 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg"><i data-lucide="chevron-right"></i></button>
+            </div>
+
+            <div id="lista" class="bg-white rounded-xl shadow-sm overflow-hidden divide-y divide-slate-50 border border-slate-100"></div>
+            
+            <button onclick="copiarResumo()" class="mt-6 w-full py-4 bg-white text-red-700 border-2 border-red-100 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm hover:bg-red-50 transition-colors active:scale-95">
+                <i data-lucide="copy"></i> Copiar Resumo
+            </button>
+        </main>
+    </div>
 
     <script>
-        // CONFIGURAÇÃO (SUA CONFIG ORIGINAL)
+        // --- 1. CONFIGURAÇÃO (A mesma do teste) ---
         const firebaseConfig = {
             apiKey: "AIzaSyCgWfdAVTVFhKRS-BLWGJrIt68hdq-OMhg",
             authDomain: "logisticacloud-1cc32.firebaseapp.com",
@@ -64,79 +105,192 @@
         };
 
         let auth, db;
+        let dataAtual = new Date().toISOString().split('T')[0];
+        let usuarioAtual = null;
+        
+        const ITENS = [
+            "Acompanhamento de cargas", "Acompanhamento de montadores", 
+            "Acompanhamento dos transportes - 1x1", "Análise da quilometragem planejada",
+            "Carregamentos Monitorados", "Imagens frota", 
+            "KPI distribuição e logística", "Monitoramento de aderências"
+        ];
 
-        // TENTA INICIAR AUTOMATICAMENTE
+        // --- 2. INICIALIZAÇÃO ---
         window.onload = function() {
-            log("Janela carregada completely.");
-            
-            // 1. Verifica se o Firebase existe
-            if (typeof firebase === 'undefined') {
-                log("ERRO FATAL: A variável 'firebase' não existe.");
-                log("CAUSA: O download dos scripts foi bloqueado pela sua rede.");
-                document.getElementById('btnEntrar').style.background = 'gray';
-                document.getElementById('btnEntrar').innerText = "BLOQUEADO";
-                return;
-            }
-
-            // 2. Tenta conectar
             try {
-                log("Tentando inicializar Firebase...");
+                if (typeof firebase === 'undefined') throw new Error("Firebase bloqueado");
+                
                 firebase.initializeApp(firebaseConfig);
                 auth = firebase.auth();
                 db = firebase.firestore();
-                log("SUCESSO: Firebase conectado e pronto.");
+
+                document.getElementById('statusMsg').innerText = "Sistema Pronto.";
+                document.getElementById('statusMsg').style.color = "green";
+
+                // Verifica se já está logado
+                auth.onAuthStateChanged((user) => {
+                    if (user) {
+                        usuarioAtual = user;
+                        entrarNoApp();
+                    }
+                });
+
+                // Ativar tecla Enter
+                document.getElementById('password').addEventListener('keyup', function(e) {
+                    if (e.key === 'Enter') fazerLogin();
+                });
+
             } catch (e) {
-                log("ERRO CONFIG: " + e.message);
+                document.getElementById('statusMsg').innerText = "Erro ao carregar: " + e.message;
+                document.getElementById('statusMsg').style.color = "red";
             }
         };
 
-        // FUNÇÃO DO CLIQUE
-        function cliqueBotao() {
-            log("----------------");
-            log("BOTÃO CLICADO.");
-            
+        // --- 3. LOGIN (Lógica do Diagnóstico) ---
+        function fazerLogin() {
             const email = document.getElementById('email').value;
             const pass = document.getElementById('password').value;
+            const btn = document.getElementById('btnLogin');
+            const status = document.getElementById('statusMsg');
 
-            if (!auth) {
-                log("ERRO: O sistema de autenticação não está pronto.");
+            if (!email || !pass) {
+                status.innerText = "Preencha e-mail e palavra-passe.";
+                status.style.color = "red";
                 return;
             }
 
-            log("Enviando dados para o Google...");
-            
+            btn.innerText = "A entrar...";
+            btn.disabled = true;
+            btn.style.opacity = "0.7";
+            status.innerText = "A conectar ao Google...";
+            status.style.color = "blue";
+
             auth.signInWithEmailAndPassword(email, pass)
-                .then((userCred) => {
-                    log("LOGIN SUCESSO! Usuário: " + userCred.user.email);
-                    alert("LOGIN FUNCIONOU! O problema está resolvido.");
+                .then(() => {
+                    status.innerText = "Sucesso! A redirecionar...";
+                    status.style.color = "green";
+                    // onAuthStateChanged fará a mudança de tela
                 })
                 .catch((error) => {
-                    log("FALHA NO LOGIN:");
-                    log("Código: " + error.code);
-                    log("Mensagem: " + error.message);
-                    
-                    if (error.code === 'auth/network-request-failed') {
-                        alert("ERRO DE REDE: O firewall da empresa bloqueou a conexão.");
-                    } else if (error.code === 'auth/operation-not-allowed') {
-                        log("DICA: Ative o Login por Email/Senha no painel do Firebase.");
-                    } else if (error.code === 'auth/invalid-credential') {
-                        log("Tentando criar conta...");
-                        criarConta(email, pass);
+                    // Tenta criar conta se não existir
+                    if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                         status.innerText = "Criando conta nova...";
+                         return auth.createUserWithEmailAndPassword(email, pass);
                     }
-                });
-        }
-
-        function criarConta(email, pass) {
-            auth.createUserWithEmailAndPassword(email, pass)
-                .then(() => {
-                    log("CONTA CRIADA COM SUCESSO!");
-                    alert("Conta criada e logada!");
+                    throw error;
                 })
-                .catch((e) => {
-                    log("Erro ao criar conta: " + e.code);
+                .catch((error) => {
+                    btn.innerText = "ENTRAR";
+                    btn.disabled = false;
+                    btn.style.opacity = "1";
+                    
+                    let msg = error.code;
+                    if(error.code === 'auth/network-request-failed') msg = "Erro de conexão.";
+                    if(error.code === 'auth/wrong-password') msg = "Palavra-passe incorreta.";
+                    if(error.code === 'auth/invalid-email') msg = "E-mail inválido.";
+                    
+                    status.innerText = "Erro: " + msg;
+                    status.style.color = "red";
                 });
         }
 
+        // --- 4. FUNÇÕES DO APP ---
+        function entrarNoApp() {
+            document.getElementById('userEmailDisplay').innerText = usuarioAtual.email;
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('appScreen').classList.remove('hidden');
+            if(window.lucide) lucide.createIcons();
+            iniciarLista();
+        }
+
+        function sair() {
+            auth.signOut();
+            window.location.reload();
+        }
+
+        function iniciarLista() {
+            const dateInput = document.getElementById('dateInput');
+            dateInput.value = dataAtual;
+            
+            // Corrige bug de eventos duplicados
+            const novoInput = dateInput.cloneNode(true);
+            dateInput.parentNode.replaceChild(novoInput, dateInput);
+            
+            novoInput.addEventListener('change', (e) => {
+                dataAtual = e.target.value;
+                carregarDados();
+            });
+            carregarDados();
+        }
+
+        function mudarData(dias) {
+            const d = new Date(dataAtual);
+            d.setDate(d.getDate() + dias);
+            dataAtual = d.toISOString().split('T')[0];
+            document.getElementById('dateInput').value = dataAtual;
+            carregarDados();
+        }
+
+        function carregarDados() {
+            if (!usuarioAtual) return;
+            db.collection("users").doc(usuarioAtual.uid).collection("logistica").doc(dataAtual)
+                .onSnapshot((doc) => {
+                    const dados = doc.exists ? doc.data() : {};
+                    renderizar(dados);
+                });
+        }
+
+        function toggle(item, valorAtual) {
+            if (navigator.vibrate) navigator.vibrate(10);
+            const ref = db.collection("users").doc(usuarioAtual.uid).collection("logistica").doc(dataAtual);
+            ref.set({ [item]: !valorAtual }, { merge: true });
+        }
+
+        function renderizar(dados) {
+            const div = document.getElementById('lista');
+            div.innerHTML = '';
+            
+            ITENS.forEach(item => {
+                const feito = !!dados[item];
+                div.innerHTML += `
+                    <div onclick="toggle('${item}', ${feito})" class="p-4 flex items-center gap-3 cursor-pointer transition-colors ${feito ? 'bg-red-50' : 'hover:bg-slate-50'} border-b border-slate-100">
+                        <div class="transition-transform ${feito ? 'text-green-600 scale-110' : 'text-slate-300'}">
+                            ${feito ? '<i data-lucide="check-circle-2" class="fill-green-100"></i>' : '<i data-lucide="circle"></i>'}
+                        </div>
+                        <span class="${feito ? 'line-through text-slate-400' : 'text-slate-700 font-medium'} select-none">${item}</span>
+                    </div>
+                `;
+            });
+            if(window.lucide) lucide.createIcons();
+        }
+
+        function copiarResumo() {
+            const itensDOM = document.querySelectorAll('#lista > div');
+            const dataF = dataAtual.split('-').reverse().join('/');
+            
+            let texto = 📋 *Logística - ${dataF}*\n\n;
+            let feitos = [], pendentes = [];
+
+            ITENS.forEach(item => {
+                const domItem = Array.from(itensDOM).find(el => el.innerText.includes(item));
+                if (domItem && domItem.innerHTML.includes('text-green-600')) feitos.push(item);
+                else pendentes.push(item);
+            });
+
+            feitos.forEach(i => texto += ✅ ${i}\n);
+            if (pendentes.length > 0) {
+                texto += \n⏳ *Pendentes:*\n;
+                pendentes.forEach(i => texto += ⬜ ${i}\n);
+            }
+
+            const area = document.createElement("textarea");
+            area.value = texto;
+            document.body.appendChild(area);
+            area.select();
+            document.execCommand("copy");
+            document.body.removeChild(area);
+            alert("Resumo copiado!");
+        }
     </script>
 </body>
 </html>
